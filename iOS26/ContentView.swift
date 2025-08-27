@@ -93,20 +93,25 @@ struct SearchContentView: View {
     
     @State var session = LanguageModelSession {
         """
-        Task: Generate a hiking route in structured text. 
-        Always reply in this format only:
+        You are a hiking route generator.
+
+        Given a location name, return a single hiking route **with verified real-world coordinates**. 
+        The coordinates must match the location name using real-world data.
+
+        Always reply in exactly this format:
 
         Name: [Hike Name], 
-        Distance: [Distance in km], 
+        Distance: [Distance in kilometers], 
         Elevation: [Elevation in meters], 
         Stops: [Stop1, Stop2], 
         Gear: [Gear1, Gear2], 
         Coordinates: [latitude, longitude]
 
         Example:
-        Name: Yosemite Falls Trail, Distance: 7.6 km, Elevation: 2600 meters, Stops: [Lower Falls, Upper Falls], Gear: [Hiking shoes, Water, Snacks], Coordinates: [37.756, -119.596]
+        Name: Yosemite Falls Trail, Distance: 12.2 km, Elevation: 792 m, Stops: [Lower Falls, Upper Falls], Gear: [Hiking shoes, Water, Snacks], Coordinates: [37.756, -119.596]
         """
     }
+
 
     
     let hikeGenerator = HikeGenerator()
@@ -188,18 +193,19 @@ struct SearchContentView: View {
                                 .frame(maxWidth: .infinity, alignment: .leading)
                             VStack(alignment: .leading, spacing: 8) {
                                 Label("Distance", systemImage: "ruler")
-                                    .font(.custom("IBM Plex Mono", size: 14))
-                                    .foregroundStyle(.secondary)
+                                    .font(.system(.body, design: .monospaced))
+                                    .foregroundStyle(.primary)
                                 Text(hike.distance)
-                                    .font(.system(.body, design: .monospaced))
-                                    .foregroundStyle(.primary)
-                                
-                                Label("Elevation", systemImage: "arrow.up.right")
                                     .font(.custom("IBM Plex Mono", size: 14))
                                     .foregroundStyle(.secondary)
-                                Text(hike.elevation)
+                                    
+                                Label("Elevation", systemImage: "arrow.up.right")
                                     .font(.system(.body, design: .monospaced))
                                     .foregroundStyle(.primary)
+                                Text(hike.elevation)
+                                    .font(.custom("IBM Plex Mono", size: 14))
+                                    .foregroundStyle(.secondary)
+                                    
                             }
                             
                             if !hike.stops.isEmpty {
