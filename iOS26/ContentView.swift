@@ -7,6 +7,7 @@
 
 import SwiftUI
 import MapKit
+import FoundationModels
 
 struct ContentView: View {
     @State private var searchString: String = ""
@@ -72,44 +73,107 @@ struct StartView: View {
 struct SearchContentView: View {
     @FocusState private var isFocused: Bool
     @Binding var searchString: String
-    @State private var cameraPosition = MapCameraPosition.region(
-            MKCoordinateRegion(
-                center: CLLocationCoordinate2D(latitude: 37.8651, longitude: -119.5383),
-                span: MKCoordinateSpan(latitudeDelta: 0.2, longitudeDelta: 0.2)
-            )
-        )
     
-    var body: some View {
-        NavigationStack {
-            
-            VStack(alignment: .leading, spacing: 40) {
-                HStack {
-                    Image(systemName: "apple.intelligence")
-                        .symbolRenderingMode(.multicolor)
-                        .font(.subheadline)
-                    Text("You can ask AI or browse the map")
-                        .searchable(text: $searchString, prompt: "Search")
-                        .focused($isFocused)
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                        .onAppear {
-                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                                isFocused = true
-                            }
-                        }
-                }
-                .padding(.horizontal)
-                // 🗺️ New Map with cameraPosition (iOS 17+)
-                Map(position: $cameraPosition) {
-                    // You can add annotations here if needed
-                }
-                .clipShape(RoundedRectangle(cornerRadius: 12))
-                .padding(.horizontal)
-                Spacer()
-            }
-            .padding(.vertical)
+    @State private var cameraPosition = MapCameraPosition.region(
+        MKCoordinateRegion(
+            center: CLLocationCoordinate2D(latitude: 37.8651, longitude: -119.5383),
+            span: MKCoordinateSpan(latitudeDelta: 0.2, longitudeDelta: 0.2)
+        )
+    )
+    
+    @State private var aiPrompt = ""
+    @State private var aiResponse = ""
+    @State private var isGenerating = false
+    @State var session = LanguageModelSession {
+            """
+             You are a hiking planner and will provide a hike in the desired area. You must include name of the hike, distance, elevation, stops and gear needed.
+            """
         }
-        .navigationTitle("Plan your hike")
+    var body: some View {
+           NavigationStack {
+               ScrollView {
+                   VStack(alignment: .leading, spacing: 40) {
+                       switch SystemLanguageModel.default.availability {
+                       case .available:
+                           // Show chat UI
+                           HStack {
+                               Image(systemName: "apple.intelligence")
+                                   .symbolRenderingMode(.multicolor)
+                                   .font(.subheadline)
+                               Text("You can ask AI or browse the map")
+                                   .font(.subheadline)
+                                   .foregroundStyle(.secondary)
+                           }
+                           .padding(.horizontal)
+                           .onAppear {
+                               session.prewarm()
+                           }
+                       case .unavailable(let reason):
+                           let text = switch reason {
+                           case .appleIntelligenceNotEnabled:
+                               "Apple Intelligence is not enabled. Please enable it in Settings."
+                           case .deviceNotEligible:
+                               "This device is not eligible for Apple Intelligence. Please use a compatible device."
+                           case .modelNotReady:
+                               "The language model is not ready yet. Please try again later."
+                           @unknown default:
+                               "The language model is unavailable for an unknown reason."
+                           }
+                           ContentUnavailableView(text, systemImage: "apple.intelligence.badge.xmark")
+                       }
+                      
+                       
+                       // Searchable field, focused on appear
+                       TextField("Search", text: $searchString)
+                           .focused($isFocused)
+                           .textFieldStyle(.roundedBorder)
+                           .padding(.horizontal)
+                           .onSubmit {
+                               Task {
+                                   await handleSearch()
+                               }
+                           }
+                           .onAppear {
+                               DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                                   isFocused = true
+                               }
+                           }
+
+                       if isGenerating {
+                           ProgressView("Generating hike plan…")
+                               .padding(.horizontal)
+                       } else if !aiResponse.isEmpty {
+                           Text(aiResponse)
+                               .font(.body)
+                               .padding(.horizontal)
+                       }
+
+                       Map(position: $cameraPosition) {
+                           // Add annotation later if needed
+                       }
+                       .clipShape(RoundedRectangle(cornerRadius: 12))
+                       .frame(height: 250)
+                       .padding(.horizontal)
+                       
+                       Spacer()
+                   }
+                   .padding(.vertical)
+               }
+           }
+           .navigationTitle("Plan your hike")
+       }
+   
+    
+// MARK: - AI Call
+    func handleSearch() async {
+        do {
+            isGenerating = true
+            let response = try await session.respond(to: searchString)
+            aiResponse = response.content
+        } catch {
+            aiResponse = "AI features are not available or permission denied."
+        }
+        isGenerating = false
     }
 }
 
