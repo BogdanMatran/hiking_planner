@@ -14,21 +14,13 @@ struct PackingItem: Identifiable {
 }
 
 struct PackingView: View {
-    @State private var items: [PackingItem] = [
-        PackingItem(name: "Backpack"),
-        PackingItem(name: "Water Bottle"),
-        PackingItem(name: "Snacks"),
-        PackingItem(name: "Map or GPS"),
-        PackingItem(name: "First Aid Kit"),
-        PackingItem(name: "Multi-tool or Knife"),
-        PackingItem(name: "Flashlight or Headlamp"),
-        PackingItem(name: "Rain Jacket"),
-        PackingItem(name: "Sunscreen"),
-        PackingItem(name: "Hiking Boots")
-    ]
-    
+    @Binding var items: [PackingItem]
+
     var body: some View {
         NavigationStack {
+            if items.isEmpty {
+                Text("Please ask AI to create a hike and then you can find the packing list here")
+            }
             List {
                 ForEach($items) { $item in
                     HStack {
@@ -36,6 +28,13 @@ struct PackingView: View {
                             .foregroundColor(item.isPacked ? .green : .secondary)
                             .onTapGesture {
                                 item.isPacked.toggle()
+                                let itemId = item.id
+                                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                                    // Remove the actual item from the array
+                                    if let index = items.firstIndex(where: { $0.id == itemId }) {
+                                        items.remove(at: index)
+                                    }
+                                }
                             }
                         Text(item.name)
                             .strikethrough(item.isPacked, color: .gray)
@@ -44,8 +43,10 @@ struct PackingView: View {
                     .padding(.vertical, 4)
                 }
             }
+            .onAppear()
             .listStyle(.plain)
             .navigationTitle("Packing List")
         }
     }
 }
+

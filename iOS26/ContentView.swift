@@ -15,6 +15,8 @@ struct ContentView: View {
     @Namespace var glassEffectNamespace
     @State private var showAddRoute = false
     @State private var hikes = sampleHikes
+    @State private var packingItems: [PackingItem] = []
+
     var body: some View {
         TabView {
             Tab("Routes", systemImage: "point.bottomleft.forward.to.point.topright.scurvepath") {
@@ -41,12 +43,16 @@ struct ContentView: View {
             }
             
             Tab("Packing", systemImage: "backpack.fill") {
-                PackingView()
+                PackingView(items: $packingItems)
             }
-
+            .badge(packingItems.isEmpty ? 0 : packingItems.count)
+            
             Tab(role: .search) {
               NavigationStack {
-                    SearchContentView(searchString: $searchString)
+                  SearchContentView(
+                      searchString: $searchString,
+                      packingItems: $packingItems
+                  )
                 }
             }
         }
@@ -73,7 +79,7 @@ struct StartView: View {
 struct SearchContentView: View {
     @FocusState private var isFocused: Bool
     @Binding var searchString: String
-    
+    @Binding var packingItems: [PackingItem]
     @State private var cameraPosition = MapCameraPosition.region(
         MKCoordinateRegion(
             center: CLLocationCoordinate2D(latitude: 37.8651, longitude: -119.5383),
@@ -91,14 +97,14 @@ struct SearchContentView: View {
         Always reply in this format only:
 
         Name: [Hike Name], 
-        Distance: [Distance in miles], 
-        Elevation: [Elevation in feet], 
+        Distance: [Distance in km], 
+        Elevation: [Elevation in meters], 
         Stops: [Stop1, Stop2], 
         Gear: [Gear1, Gear2], 
         Coordinates: [latitude, longitude]
 
         Example:
-        Name: Yosemite Falls Trail, Distance: 7.6 miles, Elevation: 2600 ft, Stops: [Lower Falls, Upper Falls], Gear: [Hiking shoes, Water, Snacks], Coordinates: [37.756, -119.596]
+        Name: Yosemite Falls Trail, Distance: 7.6 km, Elevation: 2600 meters, Stops: [Lower Falls, Upper Falls], Gear: [Hiking shoes, Water, Snacks], Coordinates: [37.756, -119.596]
         """
     }
 
@@ -172,6 +178,7 @@ struct SearchContentView: View {
                     
                     // Show parsed hike or fallback to raw response
                     if let hike = parsedHike {
+                        
                         VStack(alignment: .leading, spacing: 20) {
                             // Hike name as a headline in AI style
                             Text(hike.name)
@@ -258,6 +265,7 @@ struct SearchContentView: View {
             parsedHike = hikeGenerator.parseHike(from: aiResponse)
             
             if let hike = parsedHike {
+                packingItems = hike.gearNeeded.map { PackingItem(name: $0) }
                 cameraPosition = .region(
                     MKCoordinateRegion(
                         center: hike.coordinates,
