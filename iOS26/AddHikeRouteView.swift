@@ -27,11 +27,22 @@ struct AddHikeRouteView: View {
                         .keyboardType(.decimalPad)
                     
                     Picker("Difficulty", selection: $difficulty) {
-                        Text("Easy").tag("Easy")
-                        Text("Moderate").tag("Moderate")
-                        Text("Hard").tag("Hard")
-                    }
-                    .pickerStyle(.segmented)
+                            Text("Easy").tag("Easy")
+                            Text("Moderate").tag("Moderate")
+                            Text("Hard").tag("Hard")
+                        }
+                        .pickerStyle(.palette)
+                        .padding(4)
+                        .background(
+                            LinearGradient(
+                                colors: [.mint, .orange, .red],
+                                startPoint: .leading,
+                                endPoint: .trailing
+                            )
+                            .clipShape(Capsule())
+                        )
+                        .tint(.clear)
+                        .foregroundColor(.white)
                 }
             }
             .navigationTitle("Add Hike")

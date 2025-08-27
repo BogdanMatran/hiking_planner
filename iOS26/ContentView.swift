@@ -29,9 +29,8 @@ struct ContentView: View {
                                     showAddRoute = true
                                 } label: {
                                     Image(systemName: "plus")
-                                        .glassEffectUnion(id: 1, namespace: glassEffectNamespace)
                                 }
-
+                                .buttonStyle(.glassProminent)
                             }
                         }
                         .sheet(isPresented: $showAddRoute) {
@@ -237,7 +236,7 @@ struct SearchContentView: View {
                         .shadow(radius: 4, y: 2)
                         
                         Map(position: $cameraPosition) {
-                            Marker(hike.name, coordinate: hike.coordinates)
+                            Marker(hike.name, coordinate: hike.coordinates.locationCoordinate)
                         }
                         .clipShape(RoundedRectangle(cornerRadius: 12))
                         .frame(height: 250)
@@ -266,16 +265,15 @@ struct SearchContentView: View {
         defer { isGenerating = false }
         
         do {
-            let response = try await session.respond(to: searchString)
-            aiResponse = response.content
-            parsedHike = hikeGenerator.parseHike(from: aiResponse)
+            let response = try await session.respond(to: searchString, generating: Hike.self)
             
+            parsedHike = response.content
             if let hike = parsedHike {
                 packingItems = hike.gearNeeded.map { PackingItem(name: $0) }
                 cameraPosition = .region(
                     MKCoordinateRegion(
-                        center: hike.coordinates,
-                        span: MKCoordinateSpan(latitudeDelta: 0.2, longitudeDelta: 0.2)
+                        center: hike.coordinates.locationCoordinate,
+                        span: MKCoordinateSpan(latitudeDelta: 0.15, longitudeDelta: 0.2)
                     )
                 )
             }
@@ -288,51 +286,93 @@ struct SearchContentView: View {
 }
 
 
-// Model for Hike Data
-struct Hike: Identifiable {
+//// Model for Hike Data
+//struct Hike: Identifiable {
+//    let id = UUID()
+//    var name: String
+//    var distance: String
+//    var elevation: String
+//    var stops: [String]
+//    var gearNeeded: [String]
+//    var coordinates: CLLocationCoordinate2D
+//}
+//
+//// Create a Generable Tool
+//@MainActor
+//class HikeGenerator {
+//    
+//    // Parse the AI response into Hike details
+//    func parseHike(from response: String) -> Hike? {
+//        // "Name: [Hike Name], Distance: [Distance], Elevation: [Elevation], Stops: [Stop1, Stop2], Gear: [Gear1, Gear2], Coordinates: [Lat, Long]"
+//                
+//        let regexPattern = #"Name:\s*(.*?),\s*Distance:\s*(.*?),\s*Elevation:\s*(.*?),\s*Stops:\s*\[(.*?)\],\s*Gear:\s*\[(.*?)\],\s*Coordinates:\s*\[(.*?),(.*?)\]"#
+//        
+//        if let regex = try? NSRegularExpression(pattern: regexPattern, options: []) {
+//            let range = NSRange(location: 0, length: response.utf16.count)
+//            if let match = regex.firstMatch(in: response, options: [], range: range) {
+//                
+//                // Extract matched groups
+//                let name = String(response[Range(match.range(at: 1), in: response)!])
+//                let distance = String(response[Range(match.range(at: 2), in: response)!])
+//                let elevation = String(response[Range(match.range(at: 3), in: response)!])
+//                let stopsString = String(response[Range(match.range(at: 4), in: response)!])
+//                let gearString = String(response[Range(match.range(at: 5), in: response)!])
+//                let latitude = Double(String(response[Range(match.range(at: 6), in: response)!])) ?? 0.0
+//                let longitude = Double(String(response[Range(match.range(at: 7), in: response)!])) ?? 0.0
+//                
+//                // Convert Stops and Gear to arrays
+//                let stops = stopsString.split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }
+//                let gear = gearString.split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }
+//                
+//                // Return a Hike object
+//                return Hike(name: name, distance: distance, elevation: elevation, stops: stops, gearNeeded: gear, coordinates: CLLocationCoordinate2D(latitude: latitude, longitude: longitude))
+//            }
+//        }
+//        return nil
+//    }
+//}
+@MainActor
+class HikeGenerator {
+    
+    func generateHike(for location: String) -> Hike {
+        fatalError("This is a Generable tool and it failed")
+    }
+}
+
+@Generable
+struct Hike: Identifiable, Codable {
     let id = UUID()
+    @Guide(description: "The name of the hike")
     var name: String
     var distance: String
     var elevation: String
     var stops: [String]
     var gearNeeded: [String]
-    var coordinates: CLLocationCoordinate2D
-}
-
-// Create a Generable Tool
-@MainActor
-class HikeGenerator {
+    var coordinates: CodableCoordinate
     
-    // Parse the AI response into Hike details
-    func parseHike(from response: String) -> Hike? {
-        // "Name: [Hike Name], Distance: [Distance], Elevation: [Elevation], Stops: [Stop1, Stop2], Gear: [Gear1, Gear2], Coordinates: [Lat, Long]"
-                
-        let regexPattern = #"Name:\s*(.*?),\s*Distance:\s*(.*?),\s*Elevation:\s*(.*?),\s*Stops:\s*\[(.*?)\],\s*Gear:\s*\[(.*?)\],\s*Coordinates:\s*\[(.*?),(.*?)\]"#
-        
-        if let regex = try? NSRegularExpression(pattern: regexPattern, options: []) {
-            let range = NSRange(location: 0, length: response.utf16.count)
-            if let match = regex.firstMatch(in: response, options: [], range: range) {
-                
-                // Extract matched groups
-                let name = String(response[Range(match.range(at: 1), in: response)!])
-                let distance = String(response[Range(match.range(at: 2), in: response)!])
-                let elevation = String(response[Range(match.range(at: 3), in: response)!])
-                let stopsString = String(response[Range(match.range(at: 4), in: response)!])
-                let gearString = String(response[Range(match.range(at: 5), in: response)!])
-                let latitude = Double(String(response[Range(match.range(at: 6), in: response)!])) ?? 0.0
-                let longitude = Double(String(response[Range(match.range(at: 7), in: response)!])) ?? 0.0
-                
-                // Convert Stops and Gear to arrays
-                let stops = stopsString.split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }
-                let gear = gearString.split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }
-                
-                // Return a Hike object
-                return Hike(name: name, distance: distance, elevation: elevation, stops: stops, gearNeeded: gear, coordinates: CLLocationCoordinate2D(latitude: latitude, longitude: longitude))
-            }
-        }
-        return nil
+    enum CodingKeys: String, CodingKey {
+        case name, distance, elevation, stops, gearNeeded, coordinates
     }
 }
+
+@Generable
+struct CodableCoordinate: Codable {
+    var latitude: Double
+    var longitude: Double
+    
+    init(_ coordinate: CLLocationCoordinate2D) {
+        self.latitude = coordinate.latitude
+        self.longitude = coordinate.longitude
+    }
+    
+    var locationCoordinate: CLLocationCoordinate2D {
+        CLLocationCoordinate2D(latitude: latitude, longitude: longitude)
+    }
+}
+
+
+
 #Preview {
     ContentView()
 }
+
